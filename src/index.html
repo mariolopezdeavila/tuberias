@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!--
+  Tuberías — a collaborative Continuous Delivery pipeline design game with an AI Engineering extension.
+  Based on "Pipeline: the game that delivers" by Eficode — https://github.com/eficode/pipeline-the-game
+  Copyright (C) Eficode (original game and card texts) and Tuberías authors (AI Engineering extension and this app).
+
+  This program is free software: you can redistribute it and/or modify it under the terms of the
+  GNU General Public License as published by the Free Software Foundation, version 3.
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See <https://www.gnu.org/licenses/>.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tuberías — pipeline design game</title>
+<script>
+/* ==== Online rooms configuration (Supabase) ====
+   Paste your project URL and anon (public) key between the quotes.
+   Leave them empty to use Tuberías offline only. */
+window.TUBERIAS_CONFIG = /*__CONFIG__*/{ supabaseUrl: "", supabaseAnonKey: "" };
+</script>
+<style>/*__CSS__*/</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">Tuberías<small>CD pipeline game · AI Engineering extension</small></div>
+    <input id="pname" class="name" placeholder="Pipeline name" title="Pipeline name">
+    <input id="pteam" class="name" style="width:130px" placeholder="Team" title="Team name">
+    <button class="hbtn scchip" id="scChip">No scenario</button>
+    <button class="hbtn roomchip room-only" id="roomChip" title="Share this room: code and links">🔗 Room</button>
+    <span class="badge room-only" id="roleBadge"></span><span class="badge room-only" id="peersBadge"></span><span class="badge room-only sync" id="syncBadge"></span>
+    <div class="seg edit-only" id="modeSeg" title="Game: metrics hidden until Review. Modeling: live metrics and %C&A.">
+      <button data-m="game">Game</button><button data-m="modeling">Modeling</button>
+    </div>
+    <button class="hbtn primary edit-only" id="btnReview" title="Reveal lead time, bottleneck and findings">Review</button>
+    <div class="sp"></div>
+    <div class="menu"><button class="hbtn timer" id="timerBtn" title="Design timebox">⏱ 45:00</button>
+      <div class="pop"><button data-act="tstart">▶ Start</button><button data-act="tpause">⏸ Pause</button><button data-act="treset">↺ Reset</button>
+        <button data-act="t30">30 minutes</button><button data-act="t45">45 minutes</button><button data-act="t60">60 minutes</button></div></div>
+    <button class="hbtn edit-only" id="btnUndo" title="Undo the last action (Ctrl/⌘+Z)">↶<span class="lbl"> Undo</span></button>
+    <button class="hbtn edit-only" id="btnRedo" title="Redo (Ctrl/⌘+Shift+Z)">↷<span class="lbl"> Redo</span></button>
+    <button class="hbtn edit-only" data-act="layout" title="Auto-layout: arrange stages left to right">⇶<span class="lbl"> Auto-layout</span></button>
+    <div class="menu"><button class="hbtn">Export ▾</button>
+      <div class="pop"><button data-act="png">Image (PNG)</button><button data-act="json">Pipeline (JSON)</button></div></div>
+    <div class="menu"><button class="hbtn">File ▾</button>
+      <div class="pop"><button data-act="rooms" class="online-only">Rooms & lobby…</button><button data-act="share" class="room-only">Share this room…</button><button data-act="copy" class="room-only">Make my own copy</button><button data-act="new" class="offline-only">New pipeline</button><button data-act="import" class="edit-only">Import JSON…</button><button data-act="example" class="edit-only">Load example</button><button data-act="about">About & licence</button></div></div>
+    <input type="file" id="fileIn" accept=".json,application/json" hidden>
+  </header>
+
+  <aside id="deck">
+    <div class="top">
+      <input id="deckSearch" class="search" placeholder="Search cards…">
+      <div class="chips" id="deckChips">
+        <button class="chip" data-f="all">All</button><button class="chip" data-f="core">Core</button>
+        <button class="chip" data-f="ai">AI Engineering</button><button class="chip" data-f="custom">Custom</button>
+      </div>
+    </div>
+    <div id="deckList"></div>
+    <div class="bottom"><button class="btn" id="btnCustom" style="width:100%">+ New custom card</button></div>
+  </aside>
+
+  <main id="viewport">
+    <div id="world"><svg id="edges" width="1" height="1"></svg></div>
+    <div class="hint" id="hint"><h2>Design your pipeline</h2>
+      <p>Drag cards from the deck onto the board. Drop a card on another to run them in the same stage. Connect stages by dragging from the ○ on their right edge. Shift + drag selects several stages.</p>
+      <p style="font-size:13px">New here? <b>File ▾ → Load example</b>.</p></div>
+    <div class="legend" id="legend"><span><i style="background:#fff;border:2px solid #EA580C"></i>Critical path</span><span><i style="background:#FEF2F2;border:2px solid #DC2626"></i>Bottleneck</span><span>✋ manual · ⚙ automated · ⏳ waiting</span></div>
+    <div class="selinfo" id="selInfo" style="display:none"></div>
+    <div class="zoom"><button id="zout" title="Zoom out">−</button><button id="zfit" title="Fit to screen">⤢</button><button id="zin" title="Zoom in">+</button></div>
+  </main>
+
+  <aside id="panel">
+    <div class="tabs">
+      <button data-t="scenario">Scenario</button>
+      <button data-t="rules">Rules<span class="cnt" id="tabRulesCnt"></span></button>
+      <button data-t="review">Review</button>
+    </div>
+    <div id="panelBody"></div>
+    <div class="foot">Tuberías 2.0 · GPLv3 · based on <a href="https://github.com/eficode/pipeline-the-game" target="_blank" rel="noopener">Pipeline</a> by Eficode</div>
+  </aside>
+</div>
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast"></div>
+<script>/*__SUPABASE__*/</script>
+<script>/*__JS__*/</script>
+</body>
+</html>

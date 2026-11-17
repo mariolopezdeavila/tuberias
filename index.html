@@ -303,7 +303,7 @@ body.inroom .badge{padding:4px 6px}
       <button data-t="review">Review</button>
     </div>
     <div id="panelBody"></div>
-    <div class="foot">Tuberías · GPLv3 · based on <a href="https://github.com/eficode/pipeline-the-game" target="_blank" rel="noopener">Pipeline</a> by Eficode</div>
+    <div class="foot">Tuberías 2.0 · GPLv3 · based on <a href="https://github.com/eficode/pipeline-the-game" target="_blank" rel="noopener">Pipeline</a> by Eficode</div>
   </aside>
 </div>
 <dialog id="dlg"></dialog>
@@ -447,14 +447,14 @@ const CARDS = [
 
   // ---------- AI Engineering extension (Tuberías) ----------
   { id: 'ai-coding-agent', deck: 'ai', cat: 'ai', title: 'Coding Agent Proposes Change', tags: ['pre-commit'],
-    text: 'An AI coding agent drafts the change in a sandbox, with its own identity and least-privilege credentials. Happens before the commit: not counted in lead time.',
+    text: 'An AI coding agent drafts the change in an isolated sandbox with no production secrets and least-privilege credentials. It may iterate on CI feedback a limited number of times; then a human takes over. Not counted in lead time.',
     d: { process: 15, wait: 0, pca: 70, manual: false },
     ref: 'DORA 2025: AI adoption is near-universal but trust in AI output remains low.' },
   { id: 'ai-precommit-guard', deck: 'ai', cat: 'ai', title: 'Agent Output Guardrails', tags: ['pre-commit'],
-    text: 'Pre-commit hooks on agent output: secret scanning, linting, PR size limit. Not counted in lead time.',
+    text: 'Pre-commit limits on agent output: secret scanning, PR size limit, and protected paths (CI workflows, IaC, permissions) that the agent may not modify without human review.',
     d: { process: 1, wait: 0, pca: 95, manual: false } },
   { id: 'ai-trigger', deck: 'ai', cat: 'ai', title: 'AI Artifact Change (Non-Commit Trigger)', tags: ['start'],
-    text: 'The pipeline starts without a code commit: a provider model update, a prompt or tool-definition change, or a knowledge-base refresh.',
+    text: 'The pipeline starts without a code commit: a provider model update, a prompt or tool-definition change, a knowledge-base refresh, or a drift alert from scheduled probes against the provider\'s model.',
     d: { process: 0, wait: 0, pca: 100, manual: false } },
   { id: 'ai-versioning', deck: 'ai', cat: 'ai', title: 'Version AI Artifacts', tags: ['ai-versioning'],
     text: 'Version prompts, pinned model version, tool definitions, vector index, eval datasets and evaluators together with the code.',
@@ -466,11 +466,18 @@ const CARDS = [
     text: 'Chunk, embed and index the knowledge base the system retrieves from. Must run before evals that depend on retrieval.',
     d: { process: 30, wait: 0, pca: 95, manual: false } },
   { id: 'ai-code-review', deck: 'ai', cat: 'ai', title: 'AI Code Review', tags: [],
-    text: 'An AI reviewer comments on the PR. Start advisory; make it blocking only once its reliability is measured.',
+    text: 'An AI reviewer with read-only access comments on the PR. Complements, never replaces, human review. Start advisory; make it blocking only once its precision is measured.',
     d: { process: 5, wait: 0, pca: 90, manual: false } },
   { id: 'ai-test-gen', deck: 'ai', cat: 'ai', title: 'AI-Generated Tests', tags: [],
-    text: 'An agent proposes additional test cases for the change. Generated tests need review: they can encode the bug they test.',
+    text: 'A different agent from the one that wrote the code proposes tests designed to fail on regressions of this change. Generated tests need review: they can encode the bug they test.',
     d: { process: 10, wait: 0, pca: 85, manual: false } },
+  { id: 'ai-mutation-testing', deck: 'ai', cat: 'ai', title: 'Mutation Testing', tags: [],
+    text: 'Mutate the code and check the tests catch it. Exposes weak or self-confirming tests, including AI-generated ones.',
+    d: { process: 30, wait: 0, pca: 95, manual: false } },
+  { id: 'ai-permission-scan', deck: 'ai', cat: 'ai', title: 'Pipeline & Agent Permission Scan', tags: [],
+    text: 'Scan CI workflows and agent configs: untrusted input reaching an agent, secrets in agent reach, write tokens, risky triggers. No workflow may combine all three (Rule of Two).',
+    d: { process: 1, wait: 0, pca: 98, manual: false },
+    ref: 'PromptPwnd (Dec 2025), Microsoft lab case on the Claude Code GitHub Action (Jun 2026) and Nx s1ngularity (Aug 2025).' },
   { id: 'ai-slopsquatting', deck: 'ai', cat: 'ai', title: 'Hallucinated Package Check', tags: [],
     text: 'Verify that every dependency exists and is the intended one. Blocks "slopsquatting": packages invented by an AI and registered by attackers.',
     d: { process: 1, wait: 0, pca: 99, manual: false } },
@@ -501,18 +508,15 @@ const CARDS = [
   { id: 'ai-canary', deck: 'ai', cat: 'ai', title: 'Eval-Gated Canary', tags: ['deploy-step'],
     text: 'Release to a small share of traffic and gate the full rollout on eval scores and cost, not only on error rate and latency.',
     d: { process: 2 * H, wait: 0, pca: 95, manual: false } },
-  { id: 'ai-tracing', deck: 'ai', cat: 'ai', title: 'Agent Tracing & LLM Observability', tags: ['post-prod', 'nocount'],
-    text: 'Capture trajectories: steps, tool calls, decisions, tokens and latency (e.g. OpenTelemetry GenAI conventions). After production: not counted.',
-    d: { process: 0, wait: 0, pca: 100, manual: false } },
-  { id: 'ai-online-evals', deck: 'ai', cat: 'ai', title: 'Online Evals & Drift Detection', tags: ['post-prod', 'nocount'],
-    text: 'Score quality and cost on live traffic and detect behavioral drift. After production: not counted.',
+  { id: 'ai-release-policy', deck: 'ai', cat: 'ai', title: 'Automated Release Policy Check', tags: [],
+    text: 'Policy-as-code checks the evidence (tests, evals, provenance, approvals) against release thresholds. Runs outside the agent\'s control.',
+    d: { process: 1, wait: 0, pca: 97, manual: false } },
+  { id: 'ai-online-evals', deck: 'ai', cat: 'ai', title: 'Post-Release Online Evals', tags: ['post-prod', 'nocount'],
+    text: 'Score quality, safety and cost on live traces for a fixed window after release; confirm or roll back the behavior bundle. After production: not counted.',
     d: { process: 0, wait: 0, pca: 100, manual: false } },
   { id: 'ai-golden-feedback', deck: 'ai', cat: 'ai', title: 'Feed Golden Dataset from Production', tags: ['post-prod', 'nocount'],
     text: 'Turn production failures into new eval cases (data flywheel). After production: not counted.',
     d: { process: 0, wait: 0, pca: 100, manual: true } },
-  { id: 'ai-failure-triage', deck: 'ai', cat: 'ai', title: 'Agentic Failure Triage', tags: ['nocount'],
-    text: 'Cross-cutting: when a step fails, an agent diagnoses the cause and proposes a fix. Advisory → blocking → autonomous, based on measured reliability. Not counted in lead time.',
-    d: { process: 0, wait: 0, pca: 100, manual: false } },
   { id: 'blank', deck: 'core', cat: 'custom', title: 'Blank Card', tags: [],
     text: 'Double-click to describe your own step.',
     d: { process: 10, wait: 0, pca: 95, manual: false } },
@@ -537,7 +541,7 @@ const RULES = [
   { id: 'A3', deck: 'ai', title: 'Index Before Retrieval Evals',
     text: 'If you build or refresh a RAG index, it must come before the eval gates.' },
   { id: 'A4', deck: 'ai', title: 'Production Feedback Comes After Production',
-    text: 'Tracing, online evals and golden-dataset feedback must come after Deploy to Production.' },
+    text: 'Online evals and golden-dataset feedback must come after Deploy to Production.' },
   { id: 'A5', deck: 'ai', title: 'Agent Work Happens Before the Commit',
     text: 'Coding-agent and agent-guardrail cards are pre-commit steps: place them before the start of the pipeline.' },
 ];
@@ -607,8 +611,19 @@ function fmtDuration(min) {
   return d ? `${w}w ${d}d` : `${w}w`;
 }
 
+// Cards removed from the decks. Not shown in the palette; kept so saved boards that use them still load.
+const RETIRED_CARDS = [
+  { id: 'ai-tracing', deck: 'retired', cat: 'ai', title: 'Agent Tracing & LLM Observability', tags: ['post-prod', 'nocount'],
+    text: 'Capture trajectories: steps, tool calls, decisions, tokens and latency (e.g. OpenTelemetry GenAI conventions). After production: not counted.',
+    d: { process: 0, wait: 0, pca: 100, manual: false } },
+  { id: 'ai-failure-triage', deck: 'retired', cat: 'ai', title: 'Agentic Failure Triage', tags: ['nocount'],
+    text: 'Cross-cutting: when a step fails, an agent diagnoses the cause and proposes a fix. Advisory → blocking → autonomous, based on measured reliability. Not counted in lead time.',
+    d: { process: 0, wait: 0, pca: 100, manual: false } },
+];
+
 function makeCatalog(baseCards, customCards) {
   const map = {};
+  for (const c of RETIRED_CARDS) map[c.id] = c;
   for (const c of baseCards) map[c.id] = c;
   for (const c of customCards || []) map[c.id] = { ...c, deck: 'custom', tags: c.tags || [] };
   return map;
@@ -800,7 +815,7 @@ function evaluate(state, catalogCards, scenarios) {
       const low = cards.filter(c => result.perCard[c.uid].inScope).sort((a, z) => a.e.pca - z.e.pca)[0];
       F('warn', `Only ${Math.round(result.firstPassYield * 100)}% of changes pass every step first time: expect rework loops. Lowest %C&A: "${low.e.title}" (${low.e.pca}%).`);
     }
-    const cheap = ['lint', 'unit', 'static-analysis', 'sast', 'ai-smoke-evals', 'ai-slopsquatting'];
+    const cheap = ['lint', 'unit', 'static-analysis', 'sast', 'ai-smoke-evals', 'ai-slopsquatting', 'ai-permission-scan'];
     const slow = cards.filter(c => result.perCard[c.uid].inScope && !c.e.manual && c.e.process >= 30);
     const late = cards.filter(c => result.perCard[c.uid].inScope && cheap.includes(c.inst.cardId) && slow.some(s => before(s, c)));
     if (late.length) F('info', `Fail fast: cheap checks (${names(late)}) run after slow ones. Move them earlier for faster feedback.`);
@@ -810,10 +825,12 @@ function evaluate(state, catalogCards, scenarios) {
   const present = id => cards.some(c => c.inst.cardId === id);
   if (llm) {
     if (!present('ai-redteam-auto') && !present('ai-redteam-manual')) F('warn', 'LLM system without red teaming or safety evals (prompt injection, data exfiltration, tool misuse).');
-    if (!present('ai-tracing') && !present('ai-online-evals')) F('warn', 'No production feedback loop: add tracing or online evals after production.');
+    if (!present('ai-online-evals')) F('warn', 'No production feedback loop: add Post-Release Online Evals after production.');
     if (!present('ai-cost-gate')) F('info', 'No cost gate: token cost per request is not controlled by the pipeline.');
     if (evals.length && !present('ai-golden-feedback')) F('info', 'Evals without production feedback: the golden dataset will go stale.');
   }
+  const policyChecks = cards.filter(c => c.inst.cardId === 'ai-release-policy');
+  if (policyChecks.length && endCards.length && policyChecks.some(p => !endCards.every(t => before(p, t)))) F('warn', '"Automated Release Policy Check" must come before "Deploy to Production": it decides whether the release may go out.');
   if (present('ai-coding-agent') && !present('ai-provenance')) F('info', 'Agent-authored changes without provenance attestation: you cannot tell human from agent changes later.');
   if (present('ai-code-review') && present('code-review')) {
     const hr = cards.find(c => c.inst.cardId === 'code-review');
@@ -848,7 +865,7 @@ function wouldCycle(state, from, to) {
   return false;
 }
 
-if (typeof module !== 'undefined') module.exports = { evaluate, fmtDuration, effective, makeCatalog, wouldCycle, setBands, topoSort };
+if (typeof module !== 'undefined') module.exports = { evaluate, fmtDuration, effective, makeCatalog, wouldCycle, setBands, topoSort, RETIRED_CARDS };
 
 /*
  * Tuberías — backend adapters for online rooms. GPLv3.
@@ -1466,7 +1483,7 @@ const LS_NS = (function () { try { const p = new URLSearchParams(location.search
       st(40 + 6 * g, 140, ['functional', 'ai-regression-evals', 'ai-redteam-auto'], 'Pre-release'),
       st(40 + 7 * g, 200, ['go-nogo']),
       st(40 + 8 * g, 200, ['deploy-prod']),
-      st(40 + 9 * g, 160, ['ai-tracing', 'ai-online-evals'], 'Production'),
+      st(40 + 9 * g, 160, ['ai-online-evals'], 'Production'),
     ];
     const edges = []; for (let i = 2; i < stages.length; i++) edges.push({ from: stages[i - 1].id, to: stages[i].id });
     mutate(() => { S.stages = stages; S.edges = edges; S.scenarioId = 's-ai-bank'; S.name = 'Example: support agent pipeline'; });
@@ -1567,7 +1584,7 @@ const LS_NS = (function () { try { const p = new URLSearchParams(location.search
   function openAbout() {
     const dlg = $('#dlg'); dlg.innerHTML = '';
     const p = (t, st) => el('p', { style: st || 'font-size:13px;line-height:1.5;color:#475569' }, t);
-    dlg.append(el('div', { class: 'dlg' }, el('h3', {}, 'About Tuberías'),
+    dlg.append(el('div', { class: 'dlg' }, el('h3', {}, 'About Tuberías 2.0'),
       p('A game to design Continuous Delivery pipelines collaboratively, extended with AI Engineering practices: evals as quality gates, AI artifact versioning, red teaming, eval-gated canaries and production feedback loops.'),
       p('Based on "Pipeline: the game that delivers" by Eficode (github.com/eficode/pipeline-the-game). Core card and scenario texts come from that project. Tuberías is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, version 3. It comes with no warranty.'),
       p('References: DORA 2024 lead-time clusters; code review waiting times (industry median time-to-first-review about one day); Value Stream Mapping metrics (Martin & Osterling). Card defaults are illustrative.', 'font-size:12px;line-height:1.5;color:#94A3B8'),
