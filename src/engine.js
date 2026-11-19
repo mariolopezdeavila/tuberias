@@ -6,6 +6,8 @@
  * (critical path) from a start card to "Deploy to Production".
  */
 
+if (typeof module !== 'undefined' && typeof window === 'undefined') require('./i18n.js'); // Node: t(), scenarioLoc()
+
 function fmtDuration(min) {
   if (min == null || !isFinite(min)) return '—';
   min = Math.round(min);
@@ -13,8 +15,8 @@ function fmtDuration(min) {
   const D = 1440, W = 10080;
   if (min < D) { const h = Math.floor(min / 60), m = min % 60; return m ? `${h}h ${m}m` : `${h}h`; }
   if (min < W) { const th = Math.round(min / 60), d = Math.floor(th / 24), h = th % 24; return h ? `${d}d ${h}h` : `${d}d`; }
-  const td = Math.round(min / D), w = Math.floor(td / 7), d = td % 7;
-  return d ? `${w}w ${d}d` : `${w}w`;
+  const td = Math.round(min / D), w = Math.floor(td / 7), d = td % 7, wk = getLang() === 'es' ? ' sem' : 'w';
+  return d ? `${w}${wk} ${d}d` : `${w}${wk}`;
 }
 
 // Cards removed from the decks. Not shown in the palette; kept so saved boards that use them still load.
@@ -36,7 +38,7 @@ function makeCatalog(baseCards, customCards) {
 }
 
 function effective(inst, catalog) {
-  const def = catalog[inst.cardId] || { title: 'Unknown card', tags: [], d: { process: 0, wait: 0, pca: 100, manual: false } };
+  const def = catalog[inst.cardId] || { title: t('Unknown card'), tags: [], d: { process: 0, wait: 0, pca: 100, manual: false } };
   const o = inst.o || {};
   return {
     def,
@@ -79,7 +81,7 @@ function evaluate(state, catalogCards, scenarios) {
   const withTag = t => cards.filter(c => hasTag(c.e, t));
 
   const result = { cyclic, problems: [], rules: [], findings: [], perStage: {}, perCard: {}, cpStages: [], cpEdges: [], scenario };
-  if (cyclic) result.problems.push('The pipeline contains a cycle. Remove an arrow to evaluate it.');
+  if (cyclic) result.problems.push(t('The pipeline contains a cycle. Remove an arrow to evaluate it.'));
 
   // ---------- Scope & timing ----------
   const startCards = withTag('start'), endCards = withTag('deploy-prod');
@@ -160,87 +162,87 @@ function evaluate(state, catalogCards, scenarios) {
     result.band = DORA_BANDS_REF().find(b => result.leadTime < b.max);
     if (scenario && scenario.competitorLeadTime) result.competitorRatio = result.leadTime / scenario.competitorLeadTime;
   } else if (!cyclic) {
-    if (!startCards.length) result.problems.push('Add a start card: "A Developer Commits Code" or a non-commit trigger.');
-    if (!endCards.length) result.problems.push('Add "Deploy to Production Environment".');
-    if (startCards.length && endCards.length) result.problems.push('Connect the start card to "Deploy to Production" with arrows.');
+    if (!startCards.length) result.problems.push(t('Add a start card: "A Developer Commits Code" or a non-commit trigger.'));
+    if (!endCards.length) result.problems.push(t('Add "Deploy to Production Environment".'));
+    if (startCards.length && endCards.length) result.problems.push(t('Connect the start card to "Deploy to Production" with arrows.'));
   }
 
   // ---------- Rules ----------
   const rule = (id, applicable, violators, msgOk, msgFail) => {
-    const r = { id, status: !applicable ? 'na' : violators.length ? 'fail' : 'pass', msg: !applicable ? 'Not applicable yet.' : violators.length ? msgFail(violators) : msgOk };
+    const r = { id, status: !applicable ? 'na' : violators.length ? 'fail' : 'pass', msg: !applicable ? t('Not applicable yet.') : violators.length ? msgFail(violators) : msgOk };
     if (applicable) for (const v of violators) result.perCard[v.uid] && result.perCard[v.uid].violations.push(id);
     result.rules.push(r);
   };
   const names = vs => vs.map(v => `"${v.e.title}"`).filter((x, i, a) => a.indexOf(x) === i).join(', ');
   const needBefore = (targets, reqTag) => targets.filter(t => !withTag(reqTag).some(r => r.uid !== t.uid && before(r, t)));
 
-  rule('R1', true, [], 'Start and end are connected.', () => '');
+  rule('R1', true, [], t('Start and end are connected.'), () => '');
   { const r1 = result.rules[result.rules.length - 1];
-    if (!startCards.length || !endCards.length || !inScope.size) { r1.status = 'fail'; r1.msg = !startCards.length ? 'Missing a start card.' : !endCards.length ? 'Missing "Deploy to Production".' : 'Start and production are not connected.'; } }
-  rule('R2', endCards.length > 0, needBefore(endCards, 'rc'), 'A Release Candidate is built before production.', v => `${names(v)} has no Release Candidate before it.`);
+    if (!startCards.length || !endCards.length || !inScope.size) { r1.status = 'fail'; r1.msg = !startCards.length ? t('Missing a start card.') : !endCards.length ? t('Missing "Deploy to Production".') : t('Start and production are not connected.'); } }
+  rule('R2', endCards.length > 0, needBefore(endCards, 'rc'), t('A Release Candidate is built before production.'), v => t('{cards} has no Release Candidate before it.', { cards: names(v) }));
   const rcs = withTag('rc');
-  rule('R3', rcs.length > 0, needBefore(rcs, 'merge'), 'Code is merged before building the Release Candidate.', v => `${names(v)} has no merge to trunk before it.`);
+  rule('R3', rcs.length > 0, needBefore(rcs, 'merge'), t('Code is merged before building the Release Candidate.'), v => t('{cards} has no merge to trunk before it.', { cards: names(v) }));
   const sys = withTag('system-test');
-  rule('R4', sys.length > 0, needBefore(sys, 'deploy-step'), 'Every system test runs on a deployed system.', v => `No deployment before ${names(v)}.`);
+  rule('R4', sys.length > 0, needBefore(sys, 'deploy-step'), t('Every system test runs on a deployed system.'), v => t('No deployment before {cards}.', { cards: names(v) }));
   const deps = withTag('deploy-step');
-  rule('R5', deps.length > 0, needBefore(deps, 'package'), 'Every deployment has a package to deploy.', v => `No build/package before ${names(v)}.`);
+  rule('R5', deps.length > 0, needBefore(deps, 'package'), t('Every deployment has a package to deploy.'), v => t('No build/package before {cards}.', { cards: names(v) }));
   const llm = !!(scenario && scenario.flags && scenario.flags.llm);
   const evals = withTag('eval-gate');
-  rule('A1', llm && endCards.length > 0, endCards.filter(t => !evals.some(e => before(e, t))), 'An eval gate protects production.', () => `The scenario's product has LLM features ("${scenario.title}"): any change can alter its behavior, so an eval gate must come before "Deploy to Production". AI tools used by the pipeline itself (e.g. AI Code Review) do not trigger this rule.`);
-  if (!llm) { const a1 = result.rules[result.rules.length - 1]; a1.msg = 'Not applicable: the scenario\'s product has no LLM features.'; }
-  rule('A2', evals.length > 0, needBefore(evals, 'ai-versioning'), 'Eval gates run against versioned AI artifacts.', v => `${names(v)} runs without "Version AI Artifacts" before it.`);
-  rule('A3', evals.length > 0 && withTag('rag-index').length > 0, needBefore(evals, 'rag-index'), 'The RAG index is built before evaluating.', v => `${names(v)} runs before the RAG index is built.`);
+  rule('A1', llm && endCards.length > 0, endCards.filter(t => !evals.some(e => before(e, t))), t('An eval gate protects production.'), () => t('The scenario\'s product has LLM features ("{scenario}"): any change can alter its behavior, so an eval gate must come before "Deploy to Production". AI tools used by the pipeline itself (e.g. AI Code Review) do not trigger this rule.', { scenario: scenario.title }));
+  if (!llm) { const a1 = result.rules[result.rules.length - 1]; a1.msg = t('Not applicable: the scenario\'s product has no LLM features.'); }
+  rule('A2', evals.length > 0, needBefore(evals, 'ai-versioning'), t('Eval gates run against versioned AI artifacts.'), v => t('{cards} runs without "Version AI Artifacts" before it.', { cards: names(v) }));
+  rule('A3', evals.length > 0 && withTag('rag-index').length > 0, needBefore(evals, 'rag-index'), t('The RAG index is built before evaluating.'), v => t('{cards} runs before the RAG index is built.', { cards: names(v) }));
   const post = withTag('post-prod');
-  rule('A4', post.length > 0, needBefore(post, 'deploy-prod'), 'Production feedback steps come after production.', v => `${names(v)} must come after "Deploy to Production".`);
+  rule('A4', post.length > 0, needBefore(post, 'deploy-prod'), t('Production feedback steps come after production.'), v => t('{cards} must come after "Deploy to Production".', { cards: names(v) }));
   const pre = withTag('pre-commit');
-  rule('A5', pre.length > 0, pre.filter(p => startCards.some(s => before(s, p))), 'Agent work happens before the commit.', v => `${names(v)} is placed after the start of the pipeline.`);
+  rule('A5', pre.length > 0, pre.filter(p => startCards.some(s => before(s, p))), t('Agent work happens before the commit.'), v => t('{cards} is placed after the start of the pipeline.', { cards: names(v) }));
 
   // ---------- Heuristic findings ----------
   const F = (level, text) => result.findings.push({ level, text });
   if (result.leadTime != null) {
     const b = result.bottleneck;
     if (b) {
-      F('bad', `Bottleneck: "${b.title}" takes ${fmtDuration(b.dur)}, ${Math.round(b.share * 100)}% of the lead time.`);
+      F('bad', t('Bottleneck: "{card}" takes {dur}, {pct}% of the lead time.', { card: b.title, dur: fmtDuration(b.dur), pct: Math.round(b.share * 100) }));
       F('info', b.wait > b.process
-        ? `Most of the bottleneck is waiting (${fmtDuration(b.wait)}). Look at queues, approvals and people's availability before speeding up execution.`
-        : `Most of the bottleneck is execution (${fmtDuration(b.process)}). Consider parallelizing, splitting the suite, or running a fast subset earlier.`);
+        ? t('Most of the bottleneck is waiting ({dur}). Look at queues, approvals and people\'s availability before speeding up execution.', { dur: fmtDuration(b.wait) })
+        : t('Most of the bottleneck is execution ({dur}). Consider parallelizing, splitting the suite, or running a fast subset earlier.', { dur: fmtDuration(b.process) }));
     }
-    if (result.waitTime / Math.max(result.leadTime, 1) > 0.5) F('warn', `${Math.round(result.waitTime / result.leadTime * 100)}% of the lead time is waiting, not working.`);
-    if (result.manualOnCP.length) F('warn', `Manual steps on the critical path: ${result.manualOnCP.map(c => c.e.title).join(', ')}.`);
+    if (result.waitTime / Math.max(result.leadTime, 1) > 0.5) F('warn', t('{pct}% of the lead time is waiting, not working.', { pct: Math.round(result.waitTime / result.leadTime * 100) }));
+    if (result.manualOnCP.length) F('warn', t('Manual steps on the critical path: {cards}.', { cards: result.manualOnCP.map(c => c.e.title).join(', ') }));
     for (const id of result.cpStages) {
       const s = byId[id];
       if (s.mode === 'sequential') {
         const auto = countedCards(s).filter(c => !c.e.manual && !hasTag(c.e, 'start') && !hasTag(c.e, 'deploy-prod') && !hasTag(c.e, 'deploy-step') && !hasTag(c.e, 'package'));
         if (auto.length >= 2) {
           const sum = auto.reduce((a, c) => a + c.e.process + c.e.wait, 0), mx = Math.max(...auto.map(c => c.e.process + c.e.wait));
-          if (sum - mx >= 5) F('info', `Stage "${s.label || 'untitled'}" runs ${auto.length} automated checks in sequence; running them in parallel could save about ${fmtDuration(sum - mx)}.`);
+          if (sum - mx >= 5) F('info', t('Stage "{stage}" runs {n} automated checks in sequence; running them in parallel could save about {dur}.', { stage: s.label || t('untitled'), n: auto.length, dur: fmtDuration(sum - mx) }));
         }
       }
     }
     if (result.firstPassYield < 0.5) {
       const low = cards.filter(c => result.perCard[c.uid].inScope).sort((a, z) => a.e.pca - z.e.pca)[0];
-      F('warn', `Only ${Math.round(result.firstPassYield * 100)}% of changes pass every step first time: expect rework loops. Lowest %C&A: "${low.e.title}" (${low.e.pca}%).`);
+      F('warn', t('Only {pct}% of changes pass every step first time: expect rework loops. Lowest %C&A: "{card}" ({pca}%).', { pct: Math.round(result.firstPassYield * 100), card: low.e.title, pca: low.e.pca }));
     }
     const cheap = ['lint', 'unit', 'static-analysis', 'sast', 'ai-smoke-evals', 'ai-slopsquatting', 'ai-permission-scan'];
     const slow = cards.filter(c => result.perCard[c.uid].inScope && !c.e.manual && c.e.process >= 30);
     const late = cards.filter(c => result.perCard[c.uid].inScope && cheap.includes(c.inst.cardId) && slow.some(s => before(s, c)));
-    if (late.length) F('info', `Fail fast: cheap checks (${names(late)}) run after slow ones. Move them earlier for faster feedback.`);
+    if (late.length) F('info', t('Fail fast: cheap checks ({cards}) run after slow ones. Move them earlier for faster feedback.', { cards: names(late) }));
   }
-  if (result.preCommit) F('info', `${result.preCommit} card(s) run before the commit (local / pre-commit checks): fast feedback for the developer, but they do not count towards lead time.`);
-  if (result.unconnected) F('info', `${result.unconnected} card(s) are not connected on a path from the start card to production and are not counted.`);
+  if (result.preCommit) F('info', t('{n} card(s) run before the commit (local / pre-commit checks): fast feedback for the developer, but they do not count towards lead time.', { n: result.preCommit }));
+  if (result.unconnected) F('info', t('{n} card(s) are not connected on a path from the start card to production and are not counted.', { n: result.unconnected }));
   const present = id => cards.some(c => c.inst.cardId === id);
   if (llm) {
-    if (!present('ai-redteam-auto') && !present('ai-redteam-manual')) F('warn', 'LLM system without red teaming or safety evals (prompt injection, data exfiltration, tool misuse).');
-    if (!present('ai-online-evals')) F('warn', 'No production feedback loop: add Post-Release Online Evals after production.');
-    if (!present('ai-cost-gate')) F('info', 'No cost gate: token cost per request is not controlled by the pipeline.');
-    if (evals.length && !present('ai-golden-feedback')) F('info', 'Evals without production feedback: the golden dataset will go stale.');
+    if (!present('ai-redteam-auto') && !present('ai-redteam-manual')) F('warn', t('LLM system without red teaming or safety evals (prompt injection, data exfiltration, tool misuse).'));
+    if (!present('ai-online-evals')) F('warn', t('No production feedback loop: add Post-Release Online Evals after production.'));
+    if (!present('ai-cost-gate')) F('info', t('No cost gate: token cost per request is not controlled by the pipeline.'));
+    if (evals.length && !present('ai-golden-feedback')) F('info', t('Evals without production feedback: the golden dataset will go stale.'));
   }
   const policyChecks = cards.filter(c => c.inst.cardId === 'ai-release-policy');
-  if (policyChecks.length && endCards.length && policyChecks.some(p => !endCards.every(t => before(p, t)))) F('warn', '"Automated Release Policy Check" must come before "Deploy to Production": it decides whether the release may go out.');
-  if (present('ai-coding-agent') && !present('ai-provenance')) F('info', 'Agent-authored changes without provenance attestation: you cannot tell human from agent changes later.');
+  if (policyChecks.length && endCards.length && policyChecks.some(p => !endCards.every(t => before(p, t)))) F('warn', t('"Automated Release Policy Check" must come before "Deploy to Production": it decides whether the release may go out.'));
+  if (present('ai-coding-agent') && !present('ai-provenance')) F('info', t('Agent-authored changes without provenance attestation: you cannot tell human from agent changes later.'));
   if (present('ai-code-review') && present('code-review')) {
     const hr = cards.find(c => c.inst.cardId === 'code-review');
-    if (result.perCard[hr.uid] && result.perCard[hr.uid].bottleneck) F('info', 'Human code review is the bottleneck even with AI review: consider making AI review a pre-filter and keeping PRs small.');
+    if (result.perCard[hr.uid] && result.perCard[hr.uid].bottleneck) F('info', t('Human code review is the bottleneck even with AI review: consider making AI review a pre-filter and keeping PRs small.'));
   }
   return result;
 }
@@ -252,7 +254,7 @@ function setBands(b) { _bands = b; }
 function getScenario(state, scenarios) {
   if (!state.scenarioId || state.scenarioId === 'none') return null;
   if (state.scenarioId === 'custom') return state.customScenario || null;
-  return (scenarios || []).find(s => s.id === state.scenarioId) || null;
+  return scenarioLoc((scenarios || []).find(s => s.id === state.scenarioId) || null);
 }
 
 function topoSort(stages, succ, pred) {

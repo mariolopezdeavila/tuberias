@@ -22,7 +22,7 @@ with sync_playwright() as p:
         pg.on("console", lambda m, n=n: m.type == "error" and errors.append(n + ": " + m.text))
 
     # --- A creates a room from the landing page
-    A.goto(base + "?backend=mock&profile=A"); A.wait_for_selector("#landing")
+    A.goto(base + "?lang=en&backend=mock&profile=A"); A.wait_for_selector("#landing")
     A.screenshot(path=str(shots / "r1-landing.png"))
     A.fill("#landing input[placeholder^='Pipeline name']", "Red team pipeline")
     A.fill("#landing input[placeholder^='Team name']", "Red")
@@ -33,7 +33,7 @@ with sync_playwright() as p:
     assert len(code) == 6 and "key=" not in A.url
 
     # --- B joins with the code (viewer)
-    B.goto(base + "?backend=mock&profile=B"); B.wait_for_selector("#landing")
+    B.goto(base + "?lang=en&backend=mock&profile=B"); B.wait_for_selector("#landing")
     B.fill("#landing .code-in", code.lower()); B.click("#landing button:has-text('Join')")
     wait_for(B, "window.__tuberias.room && window.__tuberias.room.role === 'viewer'")
     assert B.evaluate("window.__tuberias.state.name") == "Red team pipeline"
@@ -79,14 +79,14 @@ with sync_playwright() as p:
     A.screenshot(path=str(shots / "r4-share.png"))
     A.check("dialog[open] input[type=checkbox]"); A.click("dialog[open] button:has-text('Close')")
     wait_for(A, "window.__tuberias.room.save === 'saved'")
-    C.goto(base + "?backend=mock&profile=C"); C.wait_for_selector("#landing .lrow")
+    C.goto(base + "?lang=en&backend=mock&profile=C"); C.wait_for_selector("#landing .lrow")
     lobby = C.locator("#landing .lobby").first.inner_text()
     print("lobby:", lobby.replace("\n", " | "))
     assert code in lobby
 
     # --- Editor link: C opens editor link -> becomes editor
     key = json.loads(A.evaluate("localStorage.getItem('tuberias@A:keys')"))[code]
-    C.goto(base + "?backend=mock&profile=C#room=" + code + "&key=" + key)
+    C.goto(base + "?lang=en&backend=mock&profile=C#room=" + code + "&key=" + key)
     wait_for(C, "window.__tuberias.room && window.__tuberias.room.role === 'editor'")
     assert "key=" not in C.url
     # --- B makes its own copy -> becomes editor of a new room

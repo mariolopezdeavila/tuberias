@@ -5,12 +5,12 @@ base = (Path(__file__).resolve().parent.parent / "dist" / "index.html").as_uri()
 with sync_playwright() as p:
     b = p.chromium.launch(); ctx = b.new_context()
     A, B, X = ctx.new_page(), ctx.new_page(), ctx.new_page()
-    A.goto(base + "?backend=mock&profile=A"); A.wait_for_selector("#landing")
+    A.goto(base + "?lang=en&backend=mock&profile=A"); A.wait_for_selector("#landing")
     A.click("#landing button:has-text('Create room')"); A.wait_for_function("window.__tuberias.room && window.__tuberias.room.role==='editor'")
     A.click("text=File ▾"); A.click("button[data-act=example]"); A.wait_for_function("window.__tuberias.room.save==='saved'")
     code = A.evaluate("window.__tuberias.room.code")
-    B.goto(base + "?backend=mock&profile=B#room=" + code); B.wait_for_function("window.__tuberias.room && window.__tuberias.state.stages.length===10")
-    X.goto(base + "?backend=mock&profile=X")  # attacker page, no key
+    B.goto(base + "?lang=en&backend=mock&profile=B#room=" + code); B.wait_for_function("window.__tuberias.room && window.__tuberias.state.stages.length===10")
+    X.goto(base + "?lang=en&backend=mock&profile=X")  # attacker page, no key
     X.evaluate("""code => { const bc = new BroadcastChannel('tuberias-mock-' + code);
         bc.postMessage({type:'state', payload:{rev: 9e15, state:{app:'tuberias', name:'HACKED', rev: 9e15, stages:[], edges:[]}}}); }""", code)
     B.wait_for_timeout(800); A.wait_for_timeout(200)

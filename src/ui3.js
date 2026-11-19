@@ -81,8 +81,8 @@
     window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
   }
   function connect(from, to) {
-    if (S.edges.some(e => e.from === from && e.to === to)) { toast('Already connected.'); renderEdges(); return; }
-    if (wouldCycle(S, from, to)) { toast('That arrow would create a loop: a pipeline must flow forward.'); renderEdges(); return; }
+    if (S.edges.some(e => e.from === from && e.to === to)) { toast(t('Already connected.')); renderEdges(); return; }
+    if (wouldCycle(S, from, to)) { toast(t('That arrow would create a loop: a pipeline must flow forward.')); renderEdges(); return; }
     mutate(() => S.edges.push({ from, to }));
   }
 
@@ -136,8 +136,8 @@
       st(40 + 9 * g, 160, ['ai-online-evals'], 'Production'),
     ];
     const edges = []; for (let i = 2; i < stages.length; i++) edges.push({ from: stages[i - 1].id, to: stages[i].id });
-    mutate(() => { S.stages = stages; S.edges = edges; S.scenarioId = 's-ai-bank'; S.name = 'Example: support agent pipeline'; });
-    fitView(); toast('Example loaded. Press Review to evaluate it.');
+    mutate(() => { S.stages = stages; S.edges = edges; S.scenarioId = 's-ai-bank'; S.name = t('Example: support agent pipeline'); });
+    fitView(); toast(t('Example loaded. Press Review to evaluate it.'));
   }
 
   // ---------- Export / import ----------
@@ -157,16 +157,16 @@
     rd.onload = () => {
       try {
         const j = JSON.parse(rd.result);
-        if (j.app !== 'tuberias' || !Array.isArray(j.stages)) throw new Error('not a Tuberías file');
+        if (j.app !== 'tuberias' || !Array.isArray(j.stages)) throw new Error(t('not a Tuberías file'));
         delete j.evaluation; delete j.exportedAt;
-        mutate(() => { S = Object.assign(newState(), j); }); fitView(); toast('Pipeline imported.');
-      } catch (e) { toast('Could not import: ' + e.message); }
+        mutate(() => { S = Object.assign(newState(), j); }); fitView(); toast(t('Pipeline imported.'));
+      } catch (e) { toast(t('Could not import: {err}', { err: e.message })); }
     };
     rd.readAsText(file);
   }
 
   function exportPNG(returnCanvas) {
-    if (!S.stages.length) { toast('The board is empty.'); return; }
+    if (!S.stages.length) { toast(t('The board is empty.')); return; }
     const ev = showEval(), sc = 2, pad = 40;
     const minX = Math.min(...S.stages.map(s => s.x)), minY = Math.min(...S.stages.map(s => s.y));
     const maxX = Math.max(...S.stages.map(s => s.x + STAGE_W)), maxY = Math.max(...S.stages.map(s => s.y + stageH(s.cards.length)));
@@ -178,7 +178,7 @@
     g.fillStyle = '#F6F7F9'; g.fillRect(0, 0, Wd, Ht);
     g.fillStyle = '#0F172A'; g.font = F(800, 22); g.fillText('Tuberías · ' + (S.name || 'Pipeline'), pad, 40);
     g.font = F(400, 13); g.fillStyle = '#475569';
-    g.fillText(`Scenario: ${R.scenario ? R.scenario.title : '—'}${S.team ? '   ·   Team: ' + S.team : ''}   ·   ${new Date().toLocaleDateString()}`, pad, 62);
+    g.fillText(`${t('Scenario')}: ${R.scenario ? R.scenario.title : '—'}${S.team ? '   ·   ' + t('Team') + ': ' + S.team : ''}   ·   ${new Date().toLocaleDateString(getLang())}`, pad, 62);
     if (ev && R.leadTime != null) {
       const items = [['Lead time', fmtDuration(R.leadTime) + '  (DORA ' + R.band.label + ')'], ['Process / wait', fmtDuration(R.processTime) + ' / ' + fmtDuration(R.waitTime)],
         ['Flow efficiency', Math.round(R.flowEfficiency * 100) + '%'], ['First-pass yield', Math.round(R.firstPassYield * 100) + '%'], ['Bottleneck', R.bottleneck ? R.bottleneck.title : '—']];
@@ -202,8 +202,8 @@
       const ps = R.perStage[s.id] || {}, n = s.cards.length, x = s.x + ox, y = s.y + oy, h = stageH(n);
       if (n > 1) { rr(x, y, STAGE_W, h, 10); g.fillStyle = 'rgba(255,255,255,.9)'; g.fill(); g.strokeStyle = ev && ps.critical ? '#EA580C' : '#CBD5E1'; g.lineWidth = 1.5; g.stroke(); }
       g.font = F(700, 12); g.fillStyle = '#475569';
-      g.fillText((s.label || (n > 1 ? 'Stage' : '')) + (n > 1 ? (s.mode === 'sequential' ? '  → seq' : '  ∥ par') : ''), x + 9, y + 20);
-      if (ev && ps.inScope) { const t = '⏱ ' + fmtDuration(ps.dur); g.font = F(600, 11); g.fillStyle = ps.critical ? '#9A3412' : '#475569'; g.fillText(t, x + STAGE_W - 10 - g.measureText(t).width, y + 20); }
+      g.fillText((s.label || (n > 1 ? t('Stage') : '')) + (n > 1 ? '  ' + (s.mode === 'sequential' ? t('→ seq') : t('∥ par')) : ''), x + 9, y + 20);
+      if (ev && ps.inScope) { const tx = '⏱ ' + fmtDuration(ps.dur); g.font = F(600, 11); g.fillStyle = ps.critical ? '#9A3412' : '#475569'; g.fillText(tx, x + STAGE_W - 10 - g.measureText(tx).width, y + 20); }
       s.cards.forEach((c, i) => {
         const e = effective(c, CAT), pc = R.perCard[c.uid] || {};
         const cx = x + 9.5, cy = y + 1.5 + HDR + i * (CARD_H + GAP);
@@ -214,12 +214,12 @@
         g.font = F(650, 12.5); g.fillStyle = '#0F172A';
         wrapT((e.def.deck === 'ai' ? '[AI] ' : '') + e.title, CARD_W - 26).slice(0, 2).forEach((l, j) => g.fillText(l, cx + 13, cy + 19 + j * 15));
         g.font = F(400, 11); g.fillStyle = '#475569'; g.fillText(cardMeta(e), cx + 13, cy + 55);
-        if (bn) { g.font = F(800, 9); const t = 'BOTTLENECK', tw = g.measureText(t).width + 10; g.fillStyle = '#DC2626'; rr(cx + CARD_W - tw - 8, cy - 8, tw, 14, 3); g.fill(); g.fillStyle = '#fff'; g.fillText(t, cx + CARD_W - tw - 3, cy + 2.5); }
-        if (pc.violations && pc.violations.length) { g.font = F(700, 11); g.fillStyle = '#B45309'; const t = '⚠ ' + pc.violations.join(','); g.fillText(t, cx + CARD_W - 8 - g.measureText(t).width, cy + 55); }
+        if (bn) { g.font = F(800, 9); const tx = 'BOTTLENECK', tw = g.measureText(tx).width + 10; g.fillStyle = '#DC2626'; rr(cx + CARD_W - tw - 8, cy - 8, tw, 14, 3); g.fill(); g.fillStyle = '#fff'; g.fillText(tx, cx + CARD_W - tw - 3, cy + 2.5); }
+        if (pc.violations && pc.violations.length) { g.font = F(700, 11); g.fillStyle = '#B45309'; const tx = '⚠ ' + pc.violations.join(','); g.fillText(tx, cx + CARD_W - 8 - g.measureText(tx).width, cy + 55); }
       });
     }
     g.font = F(400, 11); g.fillStyle = '#94A3B8';
-    g.fillText('Tuberías — free software (GPLv3), based on "Pipeline" by Eficode. Card defaults are illustrative.' + (ev ? '   Orange: critical path · Red: bottleneck.' : ''), pad, Ht - 18);
+    g.fillText(t('Tuberías — free software (GPLv3), based on "Pipeline" by Eficode. Card defaults are illustrative.') + (ev ? '   ' + t('Orange: critical path · Red: bottleneck.') : ''), pad, Ht - 18);
     if (returnCanvas === true) return cv;
     cv.toBlob(b => download(`tuberias-${slug()}.png`, b), 'image/png');
   }
@@ -227,18 +227,19 @@
   // ---------- Timer ----------
   const timer = { total: 45 * 60, left: 45 * 60, running: false, h: null };
   function drawTimer() { const b = $('#timerBtn'); const m = Math.floor(timer.left / 60), s = timer.left % 60; b.textContent = '⏱ ' + m + ':' + String(s).padStart(2, '0'); b.classList.toggle('ended', timer.left === 0); b.classList.toggle('on', timer.running); }
-  function timerStart() { if (timer.running || timer.left === 0) return; timer.running = true; timer.h = setInterval(() => { timer.left = Math.max(0, timer.left - 1); drawTimer(); if (!timer.left) { timerPause(); toast("Time's up! Press Review."); } }, 1000); drawTimer(); }
+  function timerStart() { if (timer.running || timer.left === 0) return; timer.running = true; timer.h = setInterval(() => { timer.left = Math.max(0, timer.left - 1); drawTimer(); if (!timer.left) { timerPause(); toast(t("Time's up! Press Review.")); } }, 1000); drawTimer(); }
   function timerPause() { timer.running = false; clearInterval(timer.h); drawTimer(); }
   function timerSet(min) { timerPause(); timer.total = timer.left = min * 60; drawTimer(); }
 
   function openAbout() {
     const dlg = $('#dlg'); dlg.innerHTML = '';
     const p = (t, st) => el('p', { style: st || 'font-size:13px;line-height:1.5;color:#475569' }, t);
-    dlg.append(el('div', { class: 'dlg' }, el('h3', {}, 'About Tuberías 2.0'),
-      p('A game to design Continuous Delivery pipelines collaboratively, extended with AI Engineering practices: evals as quality gates, AI artifact versioning, red teaming, eval-gated canaries and production feedback loops.'),
-      p('Based on "Pipeline: the game that delivers" by Eficode (github.com/eficode/pipeline-the-game). Core card and scenario texts come from that project. Tuberías is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, version 3. It comes with no warranty.'),
-      p('References: DORA 2024 lead-time clusters; code review waiting times (industry median time-to-first-review about one day); Value Stream Mapping metrics (Martin & Osterling). Card defaults are illustrative.', 'font-size:12px;line-height:1.5;color:#94A3B8'),
-      el('div', { class: 'acts' }, el('button', { class: 'btn primary', onclick: () => dlg.close() }, 'Close'))));
+    dlg.append(el('div', { class: 'dlg' }, el('h3', {}, t('About Tuberías {v}', { v: '2.1' })),
+      p(t('A game to design Continuous Delivery pipelines collaboratively, extended with AI Engineering practices: evals as quality gates, AI artifact versioning, red teaming, eval-gated canaries and production feedback loops.')),
+      p(t('Based on "Pipeline: the game that delivers" by Eficode (github.com/eficode/pipeline-the-game). Core card and scenario texts come from that project. Tuberías is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, version 3. It comes with no warranty.')),
+      getLang() === 'es' ? p(t('Spanish translation of the core card and scenario texts: Tuberías authors.')) : null,
+      p(t('References: DORA 2024 lead-time clusters; code review waiting times (industry median time-to-first-review about one day); Value Stream Mapping metrics (Martin & Osterling). Card defaults are illustrative.'), 'font-size:12px;line-height:1.5;color:#94A3B8'),
+      el('div', { class: 'acts' }, el('button', { class: 'btn primary', onclick: () => dlg.close() }, t('Close')))));
     dlg.showModal();
   }
 
@@ -274,7 +275,7 @@
     document.querySelectorAll('.menu > .hbtn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const m = b.parentElement, was = m.classList.contains('open'); document.querySelectorAll('.menu').forEach(x => x.classList.remove('open')); if (!was) m.classList.add('open'); }));
     document.addEventListener('click', () => document.querySelectorAll('.menu').forEach(x => x.classList.remove('open')));
     const act = {
-      new: () => { if (S.stages.length && !confirm('Start a new, empty pipeline? You can undo this.')) return; mutate(() => { const keep = S.customCards; S = newState(); S.customCards = keep; }); fitView(); },
+      new: () => { if (S.stages.length && !confirm(t('Start a new, empty pipeline? You can undo this.'))) return; mutate(() => { const keep = S.customCards; S = newState(); S.customCards = keep; }); fitView(); },
       rooms: () => { if (Backend) openLanding(); }, share: openShare, copy: makeCopy,
       example: loadExample, json: exportJSON, png: exportPNG, import: () => $('#fileIn').click(), layout: autoLayout, fit: fitView, about: openAbout,
       t30: () => timerSet(30), t45: () => timerSet(45), t60: () => timerSet(60), tstart: timerStart, tpause: timerPause, treset: () => timerSet(timer.total / 60) };
@@ -312,7 +313,8 @@
       }
       if (e.key === 'Escape' && (ui.sel || ui.stages.size)) { ui.sel = null; ui.stages = new Set(); renderBoard(); }
     });
-    drawTimer(); render(); roomsInit();
+    document.querySelectorAll('#langSeg button').forEach(b => b.addEventListener('click', () => switchLang(b.dataset.l)));
+    applyStatic(); drawTimer(); render(); roomsInit();
     if (S.stages.length && !room) setTimeout(fitView, 0);
   }
 

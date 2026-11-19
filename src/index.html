@@ -9,7 +9,7 @@
   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
   the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See <https://www.gnu.org/licenses/>.
 -->
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,27 +25,28 @@ window.TUBERIAS_CONFIG = /*__CONFIG__*/{ supabaseUrl: "", supabaseAnonKey: "" };
 <body>
 <div id="app">
   <header>
-    <div class="brand">Tuberías<small>CD pipeline game · AI Engineering extension</small></div>
+    <div class="brand">Tuberías<small data-i18n>CD pipeline game · AI Engineering extension</small></div>
     <input id="pname" class="name" placeholder="Pipeline name" title="Pipeline name">
     <input id="pteam" class="name" style="width:130px" placeholder="Team" title="Team name">
-    <button class="hbtn scchip" id="scChip">No scenario</button>
-    <button class="hbtn roomchip room-only" id="roomChip" title="Share this room: code and links">🔗 Room</button>
+    <button class="hbtn scchip" id="scChip"></button>
+    <button class="hbtn roomchip room-only" id="roomChip" title="Share this room: code and links">🔗 <span data-i18n>Room</span></button>
     <span class="badge room-only" id="roleBadge"></span><span class="badge room-only" id="peersBadge"></span><span class="badge room-only sync" id="syncBadge"></span>
     <div class="seg edit-only" id="modeSeg" title="Game: metrics hidden until Review. Modeling: live metrics and %C&A.">
-      <button data-m="game">Game</button><button data-m="modeling">Modeling</button>
+      <button data-m="game" data-i18n>Game</button><button data-m="modeling" data-i18n>Modeling</button>
     </div>
-    <button class="hbtn primary edit-only" id="btnReview" title="Reveal lead time, bottleneck and findings">Review</button>
+    <button class="hbtn primary edit-only" id="btnReview" title="Reveal lead time, bottleneck and findings"></button>
     <div class="sp"></div>
     <div class="menu"><button class="hbtn timer" id="timerBtn" title="Design timebox">⏱ 45:00</button>
-      <div class="pop"><button data-act="tstart">▶ Start</button><button data-act="tpause">⏸ Pause</button><button data-act="treset">↺ Reset</button>
-        <button data-act="t30">30 minutes</button><button data-act="t45">45 minutes</button><button data-act="t60">60 minutes</button></div></div>
-    <button class="hbtn edit-only" id="btnUndo" title="Undo the last action (Ctrl/⌘+Z)">↶<span class="lbl"> Undo</span></button>
-    <button class="hbtn edit-only" id="btnRedo" title="Redo (Ctrl/⌘+Shift+Z)">↷<span class="lbl"> Redo</span></button>
-    <button class="hbtn edit-only" data-act="layout" title="Auto-layout: arrange stages left to right">⇶<span class="lbl"> Auto-layout</span></button>
-    <div class="menu"><button class="hbtn">Export ▾</button>
-      <div class="pop"><button data-act="png">Image (PNG)</button><button data-act="json">Pipeline (JSON)</button></div></div>
-    <div class="menu"><button class="hbtn">File ▾</button>
-      <div class="pop"><button data-act="rooms" class="online-only">Rooms & lobby…</button><button data-act="share" class="room-only">Share this room…</button><button data-act="copy" class="room-only">Make my own copy</button><button data-act="new" class="offline-only">New pipeline</button><button data-act="import" class="edit-only">Import JSON…</button><button data-act="example" class="edit-only">Load example</button><button data-act="about">About & licence</button></div></div>
+      <div class="pop"><button data-act="tstart" data-i18n>▶ Start</button><button data-act="tpause" data-i18n>⏸ Pause</button><button data-act="treset" data-i18n>↺ Reset</button>
+        <button data-act="t30" data-i18n>30 minutes</button><button data-act="t45" data-i18n>45 minutes</button><button data-act="t60" data-i18n>60 minutes</button></div></div>
+    <button class="hbtn edit-only" id="btnUndo" title="Undo the last action (Ctrl/⌘+Z)">↶<span class="lbl"> <span data-i18n>Undo</span></span></button>
+    <button class="hbtn edit-only" id="btnRedo" title="Redo (Ctrl/⌘+Shift+Z)">↷<span class="lbl"> <span data-i18n>Redo</span></span></button>
+    <button class="hbtn edit-only" data-act="layout" title="Auto-layout: arrange stages left to right">⇶<span class="lbl"> <span data-i18n>Auto-layout</span></span></button>
+    <div class="menu"><button class="hbtn" data-i18n>Export ▾</button>
+      <div class="pop"><button data-act="png" data-i18n>Image (PNG)</button><button data-act="json" data-i18n>Pipeline (JSON)</button></div></div>
+    <div class="menu"><button class="hbtn" data-i18n>File ▾</button>
+      <div class="pop"><button data-act="rooms" class="online-only" data-i18n>Rooms & lobby…</button><button data-act="share" class="room-only" data-i18n>Share this room…</button><button data-act="copy" class="room-only" data-i18n>Make my own copy</button><button data-act="new" class="offline-only" data-i18n>New pipeline</button><button data-act="import" class="edit-only" data-i18n>Import JSON…</button><button data-act="example" class="edit-only" data-i18n>Load example</button><button data-act="about" data-i18n>About & licence</button></div></div>
+    <div class="seg langseg" id="langSeg" title="Language / Idioma"><button data-l="es" title="Español">ES</button><button data-l="en" title="English">EN</button></div>
     <input type="file" id="fileIn" accept=".json,application/json" hidden>
   </header>
 
@@ -53,32 +54,32 @@ window.TUBERIAS_CONFIG = /*__CONFIG__*/{ supabaseUrl: "", supabaseAnonKey: "" };
     <div class="top">
       <input id="deckSearch" class="search" placeholder="Search cards…">
       <div class="chips" id="deckChips">
-        <button class="chip" data-f="all">All</button><button class="chip" data-f="core">Core</button>
-        <button class="chip" data-f="ai">AI Engineering</button><button class="chip" data-f="custom">Custom</button>
+        <button class="chip" data-f="all" data-i18n>All</button><button class="chip" data-f="core" data-i18n>Core</button>
+        <button class="chip" data-f="ai" data-i18n>AI Engineering</button><button class="chip" data-f="custom" data-i18n>Custom</button>
       </div>
     </div>
     <div id="deckList"></div>
-    <div class="bottom"><button class="btn" id="btnCustom" style="width:100%">+ New custom card</button></div>
+    <div class="bottom"><button class="btn" id="btnCustom" style="width:100%" data-i18n>+ New custom card</button></div>
   </aside>
 
   <main id="viewport">
     <div id="world"><svg id="edges" width="1" height="1"></svg></div>
-    <div class="hint" id="hint"><h2>Design your pipeline</h2>
-      <p>Drag cards from the deck onto the board. Drop a card on another to run them in the same stage. Connect stages by dragging from the ○ on their right edge. Shift + drag selects several stages.</p>
-      <p style="font-size:13px">New here? <b>File ▾ → Load example</b>.</p></div>
-    <div class="legend" id="legend"><span><i style="background:#fff;border:2px solid #EA580C"></i>Critical path</span><span><i style="background:#FEF2F2;border:2px solid #DC2626"></i>Bottleneck</span><span>✋ manual · ⚙ automated · ⏳ waiting</span></div>
+    <div class="hint" id="hint"><h2 data-i18n>Design your pipeline</h2>
+      <p data-i18n>Drag cards from the deck onto the board. Drop a card on another to run them in the same stage. Connect stages by dragging from the ○ on their right edge. Shift + drag selects several stages.</p>
+      <p style="font-size:13px" data-i18n-html>New here? <b>File ▾ → Load example</b>.</p></div>
+    <div class="legend" id="legend"><span><i style="background:#fff;border:2px solid #EA580C"></i><span data-i18n title="Longest path from the start card to production: it sets the lead time.">Critical path</span></span><span><i style="background:#FEF2F2;border:2px solid #DC2626"></i><span data-i18n title="The card on the critical path that contributes most time.">Bottleneck</span></span><span data-i18n>✋ manual · ⚙ automated · ⏳ waiting</span></div>
     <div class="selinfo" id="selInfo" style="display:none"></div>
     <div class="zoom"><button id="zout" title="Zoom out">−</button><button id="zfit" title="Fit to screen">⤢</button><button id="zin" title="Zoom in">+</button></div>
   </main>
 
   <aside id="panel">
     <div class="tabs">
-      <button data-t="scenario">Scenario</button>
-      <button data-t="rules">Rules<span class="cnt" id="tabRulesCnt"></span></button>
-      <button data-t="review">Review</button>
+      <button data-t="scenario" data-i18n>Scenario</button>
+      <button data-t="rules"><span data-i18n>Rules</span><span class="cnt" id="tabRulesCnt"></span></button>
+      <button data-t="review" data-i18n>Review</button>
     </div>
     <div id="panelBody"></div>
-    <div class="foot">Tuberías 2.0 · GPLv3 · based on <a href="https://github.com/eficode/pipeline-the-game" target="_blank" rel="noopener">Pipeline</a> by Eficode</div>
+    <div class="foot" data-i18n-html>Tuberías 2.1 · GPLv3 · based on <a href="https://github.com/eficode/pipeline-the-game" target="_blank" rel="noopener">Pipeline</a> by Eficode</div>
   </aside>
 </div>
 <dialog id="dlg"></dialog>

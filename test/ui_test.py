@@ -4,7 +4,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 root = Path(__file__).resolve().parent.parent
-url = (root / "dist" / "tuberias.html").as_uri()
+url = (root / "dist" / "tuberias.html").as_uri() + "?lang=en"  # these tests check English texts
 shots = root / "test" / "shots"; shots.mkdir(exist_ok=True)
 errors = []
 

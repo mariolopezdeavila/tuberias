@@ -6,8 +6,8 @@
   const baseUrl = () => location.href.split('#')[0];
   const roomLink = (code, key) => baseUrl() + '#room=' + code + (key ? '&key=' + key : '');
   const me = () => ({ id: ME_ID, role: room ? room.role : 'viewer' });
-  const scenarioTitle = id => (SCENARIOS.find(s => s.id === id) || {}).title || (id === 'custom' ? 'Custom scenario' : 'No scenario');
-  function ago(iso) { const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000); return s < 60 ? 'just now' : s < 3600 ? Math.floor(s / 60) + ' min ago' : s < 86400 ? Math.floor(s / 3600) + ' h ago' : Math.floor(s / 86400) + ' d ago'; }
+  const scenarioTitle = id => (scenarioLoc(SCENARIOS.find(s => s.id === id)) || {}).title || (id === 'custom' ? t('Custom scenario') : t('No scenario'));
+  function ago(iso) { const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000); return s < 60 ? t('just now') : s < 3600 ? t('{n} min ago', { n: Math.floor(s / 60) }) : s < 86400 ? t('{n} h ago', { n: Math.floor(s / 3600) }) : t('{n} d ago', { n: Math.floor(s / 86400) }); }
 
   function parseHash() {
     const h = new URLSearchParams(location.hash.replace(/^#/, ''));
@@ -19,14 +19,14 @@
   function remember(code, role, name) { const r = lsGet('recent', []).filter(x => x.code !== code); r.unshift({ code, role, name: name || '', at: Date.now() }); lsSet('recent', r.slice(0, 12)); }
 
   async function openRoom(code, keyFromLink) {
-    closeLanding(); toast('Opening room ' + code + '…');
+    closeLanding(); toast(t('Opening room {code}…', { code }));
     try {
       if (keyFromLink) {
-        if (await Backend.checkKey(code, keyFromLink)) { setKey(code, keyFromLink); toast('Editor link accepted: you can edit this room.'); }
-        else toast('That editor link is not valid. Opening the room as a viewer.');
+        if (await Backend.checkKey(code, keyFromLink)) { setKey(code, keyFromLink); toast(t('Editor link accepted: you can edit this room.')); }
+        else toast(t('That editor link is not valid. Opening the room as a viewer.'));
       }
       const remote = await Backend.getRoom(code);
-      if (!remote) { toast('Room ' + code + ' not found.'); history.replaceState(null, '', baseUrl()); openLanding(); return; }
+      if (!remote) { toast(t('Room {code} not found.', { code })); history.replaceState(null, '', baseUrl()); openLanding(); return; }
       leaveRoom(true);
       const key = getKeys()[code] || null;
       room = { code, key, role: key ? 'editor' : 'viewer', conn: null, pending: false, dirty: false, timer: null, status: 'connecting', save: 'saved', peers: [], poll: null, lastMsg: Date.now() };
@@ -42,9 +42,9 @@
       room.poll = setInterval(pollRoom, 10000);
       remember(code, room.role, S.name);
       render(); fitView();
-      toast(room.role === 'editor' ? `Room ${code}: you are the editor. Share the code so others can watch.` : `Room ${code}: viewing. Only the editor can change it.`);
+      toast(room.role === 'editor' ? t('Room {code}: you are the editor. Share the code so others can watch.', { code }) : t('Room {code}: viewing. Only the editor can change it.', { code }));
       if (room.pending) { room.dirty = true; schedulePush(0); }
-    } catch (e) { toast('Could not open the room: ' + e.message); openLanding(); }
+    } catch (e) { toast(t('Could not open the room: {err}', { err: e.message })); openLanding(); }
   }
 
   function leaveRoom(silent) {
@@ -105,7 +105,7 @@
       if (/not allowed/i.test(e.message)) {
         setKey(r.code, null); r.role = 'viewer'; r.key = null; r.pending = false;
         if (r.conn) r.conn.setMe(me());
-        toast('Your edit access to this room is no longer valid. You are now viewing it.');
+        toast(t('Your edit access to this room is no longer valid. You are now viewing it.'));
         render(); return;
       }
       r.save = 'error'; renderRoomHeader();
@@ -115,88 +115,88 @@
 
   function renderRoomHeader() {
     if (!room) return;
-    $('#roomChip').textContent = '🔗 Room ' + room.code;
-    const rb = $('#roleBadge'); rb.textContent = room.role === 'editor' ? '✏️ Editor' : '👁 Viewing'; rb.className = 'badge room-only ' + room.role;
+    $('#roomChip').textContent = '🔗 ' + t('Room {code}', { code: room.code });
+    const rb = $('#roleBadge'); rb.textContent = room.role === 'editor' ? '✏️ ' + t('Editor') : '👁 ' + t('Viewing'); rb.className = 'badge room-only ' + room.role;
     const peers = room.peers.length ? room.peers : [me()];
     const pb = $('#peersBadge'); pb.textContent = '👥 ' + peers.length;
-    pb.title = `${peers.length} connected · ${peers.filter(p => p.role === 'editor').length} editor(s)`;
+    pb.title = t('{n} connected · {e} editor(s)', { n: peers.length, e: peers.filter(p => p.role === 'editor').length });
     const sb = $('#syncBadge');
-    let t = '● Live', cls = 'ok';
-    if (room.status !== 'live') { t = room.status === 'connecting' ? 'Connecting…' : '⚠ Reconnecting'; cls = 'warn'; }
-    if (room.role === 'editor' && room.save === 'saving') { t = 'Saving…'; cls = 'warn'; }
-    if (room.role === 'editor' && room.save === 'error') { t = '⚠ Not saved, retrying'; cls = 'bad'; }
-    sb.textContent = t; sb.className = 'badge room-only sync ' + cls;
+    let txt = '● ' + t('Live'), cls = 'ok';
+    if (room.status !== 'live') { txt = room.status === 'connecting' ? t('Connecting…') : '⚠ ' + t('Reconnecting'); cls = 'warn'; }
+    if (room.role === 'editor' && room.save === 'saving') { txt = t('Saving…'); cls = 'warn'; }
+    if (room.role === 'editor' && room.save === 'error') { txt = '⚠ ' + t('Not saved, retrying'); cls = 'bad'; }
+    sb.textContent = txt; sb.className = 'badge room-only sync ' + cls;
   }
 
   // ---------- Landing: create / join / lobby ----------
   function openLanding() {
     closeLanding();
     const offlineHas = (() => { const l = load(); return l && l.stages && l.stages.length ? l : null; })();
-    const name = el('input', { class: 'inp', placeholder: 'Pipeline name, e.g. "Support agent v1"' });
-    const team = el('input', { class: 'inp', placeholder: 'Team name (optional)' });
+    const name = el('input', { class: 'inp', placeholder: t('Pipeline name, e.g. "Support agent v1"') });
+    const team = el('input', { class: 'inp', placeholder: t('Team name (optional)') });
     const fromOffline = offlineHas ? el('input', { type: 'checkbox' }) : null;
     const code = el('input', { class: 'inp code-in', placeholder: 'ABC123', maxlength: '7', autocomplete: 'off', spellcheck: 'false' });
     code.addEventListener('input', () => { code.value = code.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); });
-    const lobby = el('div', { class: 'lobby' }, el('p', { class: 'muted' }, 'Loading…'));
+    const lobby = el('div', { class: 'lobby' }, el('p', { class: 'muted' }, t('Loading…')));
     const create = el('button', { class: 'btn primary', onclick: async () => {
-      create.disabled = true; create.textContent = 'Creating…';
+      create.disabled = true; create.textContent = t('Creating…');
       try {
         const st = fromOffline && fromOffline.checked ? JSON.parse(JSON.stringify(offlineHas)) : newState();
-        st.name = name.value.trim() || st.name || 'Untitled pipeline'; st.team = team.value.trim() || st.team || '';
+        st.name = name.value.trim() || st.name || t('Untitled pipeline'); st.team = team.value.trim() || st.team || '';
         st.revealed = false; st.listed = false; st.rev = Date.now();
         const r = await Backend.createRoom(st);
         setKey(r.code, r.key); await openRoom(r.code);
-      } catch (e) { toast('Could not create the room: ' + e.message); create.disabled = false; create.textContent = 'Create room'; }
-    } }, 'Create room');
-    const join = () => { if (code.value.length !== 6) { code.focus(); toast('A room code has 6 characters.'); return; } openRoom(code.value); };
+      } catch (e) { toast(t('Could not create the room: {err}', { err: e.message })); create.disabled = false; create.textContent = t('Create room'); }
+    } }, t('Create room'));
+    const join = () => { if (code.value.length !== 6) { code.focus(); toast(t('A room code has 6 characters.')); return; } openRoom(code.value); };
     code.addEventListener('keydown', e => { if (e.key === 'Enter') join(); });
     const recent = lsGet('recent', []);
     const box = el('div', { id: 'landing', class: 'landing' }, el('div', { class: 'lcard' },
-      el('div', { class: 'lhead' }, el('h1', {}, 'Tuberías'), el('p', {}, 'Design Continuous Delivery pipelines together · AI Engineering extension')),
+      el('div', { class: 'lhead row', style: 'justify-content:space-between;align-items:flex-start' }, el('div', {}, el('h1', {}, 'Tuberías'), el('p', {}, t('Design Continuous Delivery pipelines together · AI Engineering extension'))), langSeg()),
       el('div', { class: 'lgrid' },
-        el('section', {}, el('h3', {}, 'Create a room'), el('p', { class: 'muted' }, 'You will be the editor. Share the code so others can watch live.'),
+        el('section', {}, el('h3', {}, t('Create a room')), el('p', { class: 'muted' }, t('You will be the editor. Share the code so others can watch live.')),
           name, team,
-          fromOffline ? el('label', { class: 'chk' }, fromOffline, ` Start from my offline pipeline (${offlineHas.stages.length} stages)`) : null,
+          fromOffline ? el('label', { class: 'chk' }, fromOffline, ' ' + t('Start from my offline pipeline ({n} stages)', { n: offlineHas.stages.length })) : null,
           create),
-        el('section', {}, el('h3', {}, 'Join a room'), el('p', { class: 'muted' }, 'Enter the code the editor shared with you. You will watch in real time.'),
-          code, el('button', { class: 'btn primary', onclick: join }, 'Join'))),
+        el('section', {}, el('h3', {}, t('Join a room')), el('p', { class: 'muted' }, t('Enter the code the editor shared with you. You will watch in real time.')),
+          code, el('button', { class: 'btn primary', onclick: join }, t('Join')))),
       el('section', {}, el('div', { class: 'row', style: 'justify-content:space-between' }, el('h3', {}, 'Lobby'),
-        el('button', { class: 'btn', onclick: () => loadLobby(lobby) }, '↻ Refresh')),
-        el('p', { class: 'muted' }, 'Rooms whose editor chose "Show in lobby" (active in the last 3 days).'), lobby),
-      recent.length ? el('section', {}, el('h3', {}, 'Your recent rooms'),
+        el('button', { class: 'btn', onclick: () => loadLobby(lobby) }, t('↻ Refresh'))),
+        el('p', { class: 'muted' }, t('Rooms whose editor chose "Show in lobby" (active in the last 3 days).')), lobby),
+      recent.length ? el('section', {}, el('h3', {}, t('Your recent rooms')),
         el('div', { class: 'lobby' }, recent.map(r => el('div', { class: 'lrow' },
-          el('span', { class: 'lcode' }, r.code), el('span', { class: 'lname' }, r.name || '—'), el('span', { class: 'muted' }, (r.role === 'editor' && getKeys()[r.code] ? '✏️ editor' : '👁 viewer') + ' · ' + ago(new Date(r.at).toISOString())),
-          el('button', { class: 'btn', onclick: () => openRoom(r.code) }, 'Open'))))) : null,
+          el('span', { class: 'lcode' }, r.code), el('span', { class: 'lname' }, r.name || '—'), el('span', { class: 'muted' }, (r.role === 'editor' && getKeys()[r.code] ? '✏️ ' + t('editor') : '👁 ' + t('viewer')) + ' · ' + ago(new Date(r.at).toISOString())),
+          el('button', { class: 'btn', onclick: () => openRoom(r.code) }, t('Open')))))) : null,
       el('div', { class: 'lfoot' },
-        el('button', { class: 'btn', onclick: () => { closeLanding(); if (room) return; toast('Offline mode: your pipeline stays in this browser.'); } }, room ? 'Back to room' : 'Work offline in this browser'),
-        el('span', { class: 'muted' }, 'Free software (GPLv3) · based on "Pipeline" by Eficode'))));
+        el('button', { class: 'btn', onclick: () => { closeLanding(); if (room) return; toast(t('Offline mode: your pipeline stays in this browser.')); } }, room ? t('Back to room') : t('Work offline in this browser')),
+        el('span', { class: 'muted' }, t('Free software (GPLv3) · based on "Pipeline" by Eficode')))));
     document.body.append(box);
     loadLobby(lobby);
     setTimeout(() => name.focus(), 50);
   }
   function closeLanding() { const l = $('#landing'); if (l) l.remove(); }
   async function loadLobby(target) {
-    target.innerHTML = ''; target.append(el('p', { class: 'muted' }, 'Loading…'));
+    target.innerHTML = ''; target.append(el('p', { class: 'muted' }, t('Loading…')));
     try {
       const rooms = await Backend.listRooms();
       target.innerHTML = '';
-      if (!rooms.length) { target.append(el('p', { class: 'muted' }, 'No rooms in the lobby yet.')); return; }
+      if (!rooms.length) { target.append(el('p', { class: 'muted' }, t('No rooms in the lobby yet.'))); return; }
       for (const r of rooms) target.append(el('div', { class: 'lrow' },
-        el('span', { class: 'lcode' }, r.code), el('span', { class: 'lname' }, (r.name || 'Untitled') + (r.team ? ' · ' + r.team : '')),
+        el('span', { class: 'lcode' }, r.code), el('span', { class: 'lname' }, (r.name || t('Untitled')) + (r.team ? ' · ' + r.team : '')),
         el('span', { class: 'muted' }, scenarioTitle(r.scenarioId) + ' · ' + ago(r.updatedAt)),
-        el('button', { class: 'btn', onclick: () => openRoom(r.code) }, 'Open')));
-    } catch (e) { target.innerHTML = ''; target.append(el('p', { class: 'muted' }, 'Could not load the lobby: ' + e.message)); }
+        el('button', { class: 'btn', onclick: () => openRoom(r.code) }, t('Open'))));
+    } catch (e) { target.innerHTML = ''; target.append(el('p', { class: 'muted' }, t('Could not load the lobby: {err}', { err: e.message }))); }
   }
 
   // ---------- Share dialog ----------
   function copyText(text, input) {
-    const done = () => toast('Copied to the clipboard.');
-    const fallback = () => { if (input) { input.focus(); input.select(); } try { document.execCommand('copy') ? done() : toast('Select the link and copy it.'); } catch (e) { toast('Select the link and copy it.'); } };
+    const done = () => toast(t('Copied to the clipboard.'));
+    const fallback = () => { if (input) { input.focus(); input.select(); } try { document.execCommand('copy') ? done() : toast(t('Select the link and copy it.')); } catch (e) { toast(t('Select the link and copy it.')); } };
     try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
   }
   function linkRow(label, url, note) {
     const inp = el('input', { class: 'inp', value: url, readonly: true });
-    return el('div', {}, el('label', { class: 'f' }, label), el('div', { class: 'row' }, inp, el('button', { class: 'btn', onclick: () => copyText(url, inp) }, 'Copy')), note ? el('div', { class: 'ref' }, note) : null);
+    return el('div', {}, el('label', { class: 'f' }, label), el('div', { class: 'row' }, inp, el('button', { class: 'btn', onclick: () => copyText(url, inp) }, t('Copy'))), note ? el('div', { class: 'ref' }, note) : null);
   }
   function openShare() {
     if (!room) return;
@@ -204,26 +204,26 @@
     const ed = room.role === 'editor';
     const listed = el('input', { type: 'checkbox', checked: !!S.listed, onchange: e => mutate(() => { S.listed = e.target.checked; }) });
     dlg.append(el('div', { class: 'dlg' },
-      el('div', { class: 'sub' }, 'Share this room'),
-      el('div', { class: 'bigcode', title: 'Read it aloud: people join with this code' }, room.code),
-      el('p', { class: 'muted', style: 'text-align:center;margin-top:0' }, 'Others open Tuberías, choose "Join a room" and type this code.'),
-      linkRow('Viewer link', roomLink(room.code), 'Anyone with this link or code can watch, but not edit.'),
-      ed ? linkRow('Editor link', roomLink(room.code, room.key), '⚠ Anyone with this link can edit. Use it to continue from another laptop or to hand over editing. If two people edit at the same time, the last change wins.') : null,
-      ed ? el('label', { class: 'chk', style: 'margin-top:12px' }, listed, ' Show this room in the lobby (other teams can find it without the code)') : null,
+      el('div', { class: 'sub' }, t('Share this room')),
+      el('div', { class: 'bigcode', title: t('Read it aloud: people join with this code') }, room.code),
+      el('p', { class: 'muted', style: 'text-align:center;margin-top:0' }, t('Others open Tuberías, choose "Join a room" and type this code.')),
+      linkRow(t('Viewer link'), roomLink(room.code), t('Anyone with this link or code can watch, but not edit.')),
+      ed ? linkRow(t('Editor link'), roomLink(room.code, room.key), '⚠ ' + t('Anyone with this link can edit. Use it to continue from another laptop or to hand over editing. If two people edit at the same time, the last change wins.')) : null,
+      ed ? el('label', { class: 'chk', style: 'margin-top:12px' }, listed, ' ' + t('Show this room in the lobby (other teams can find it without the code)')) : null,
       el('div', { class: 'acts' },
-        el('button', { class: 'btn', style: 'margin-right:auto', onclick: () => { dlg.close(); leaveRoom(false); openLanding(); } }, 'Leave room'),
-        !ed ? el('button', { class: 'btn', onclick: () => { dlg.close(); makeCopy(); } }, 'Make my own copy') : null,
-        el('button', { class: 'btn primary', onclick: () => dlg.close() }, 'Close'))));
+        el('button', { class: 'btn', style: 'margin-right:auto', onclick: () => { dlg.close(); leaveRoom(false); openLanding(); } }, t('Leave room')),
+        !ed ? el('button', { class: 'btn', onclick: () => { dlg.close(); makeCopy(); } }, t('Make my own copy')) : null,
+        el('button', { class: 'btn primary', onclick: () => dlg.close() }, t('Close')))));
     dlg.showModal();
   }
   async function makeCopy() {
     if (!Backend) return;
     try {
       const st = JSON.parse(JSON.stringify(S));
-      st.name = (st.name || 'Pipeline') + ' (copy)'; st.listed = false; st.rev = Date.now();
+      st.name = (st.name || 'Pipeline') + ' ' + t('(copy)'); st.listed = false; st.rev = Date.now();
       const r = await Backend.createRoom(st);
       setKey(r.code, r.key); await openRoom(r.code);
-    } catch (e) { toast('Could not copy the room: ' + e.message); }
+    } catch (e) { toast(t('Could not copy the room: {err}', { err: e.message })); }
   }
 
   function roomsInit() {

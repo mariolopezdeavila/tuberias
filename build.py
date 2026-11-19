@@ -9,7 +9,7 @@ root = Path(__file__).parent
 src = root / "src"
 html = (src / "index.html").read_text(encoding="utf-8")
 css = (src / "style.css").read_text(encoding="utf-8")
-order = ["data.js", "engine.js", "sync.js", "ui1.js", "ui2.js", "ui3.js", "ui4.js", "ui_end.js"]
+order = ["i18n.js", "i18n_es.js", "data.js", "content_es.js", "engine.js", "sync.js", "ui1.js", "ui2.js", "ui3.js", "ui4.js", "ui_end.js"]
 js = "\n".join((src / f).read_text(encoding="utf-8") for f in order).replace("</script", "<\\/script")
 supa = (root / "vendor" / "supabase.js").read_text(encoding="utf-8").replace("</script", "<\\/script")
 supa = "/* @supabase/supabase-js (MIT licence) https://github.com/supabase/supabase-js */\n" + supa
